@@ -57,6 +57,8 @@ namespace WpfApp1
         {
             System.IO.Directory.CreateDirectory(folderName);
 
+            int keyColumn = 1;
+
             string[] rows = File.ReadAllLines(sourceFilePath);
             if (rows.Length <= 1)
             {
@@ -67,22 +69,21 @@ namespace WpfApp1
             for (int r = 0; r < rows.Length; r++)
             {
                 string[] columns = rows[r].Split('\t');
-                if (columns.Length <= 1)
+                if (columns.Length <= 2)
                 {
-                    errMsg = "columns.Length <= 1";
+                    errMsg = "columns.Length <= 2";
                     return false;
                 }
 
-
                 if (r == 0)
                 {
-                    if (columns[0].ToLower() != "key")
+                    if (columns[keyColumn].ToLower() != "key")
                     {
-                        errMsg = "columns[0].ToLower() != \"key\"";
+                        errMsg = $"columns[{keyColumn}].ToLower() != \"key\"";
                         return false;
                     }
 
-                    for (int c = 1; c < columns.Length; c++)
+                    for (int c = keyColumn + 1; c < columns.Length; c++)
                     {
                         string filePath = $@"{folderName}/{columns[c]}.txt";
                         if(File.Exists(filePath))
@@ -97,20 +98,23 @@ namespace WpfApp1
                 }
                 else
                 {
-                    for (int c = 1; c < columns.Length; c++)
+                    int fileIndex = 0;
+                    for (int c = keyColumn + 1; c < columns.Length; c++)
                     {
                         string s = "";
-                        if (columns[0].StartsWith("//"))
+                        if (columns[keyColumn].StartsWith("//"))
                         {
-                            s = $"{columns[0]}";
+                            s = $"{columns[keyColumn]}";
                         }
                         else
                         {
                             string n = columns[c].Replace("\"", "\\\"");
-                            s = $"\"{columns[0]}\" = \"{n}\";";
+                            s = $"\"{columns[keyColumn]}\" = \"{n}\";";
                         }
                         Debug.WriteLine(s);
-                        File.AppendAllText(files[c - 1], $"{s}\n");
+                        File.AppendAllText(files[fileIndex], $"{s}\n");
+
+                        fileIndex++;
                     }
                 }
             }

@@ -1,33 +1,48 @@
 ﻿using Microsoft.Win32;
-using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace WpfApp1
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, INotifyPropertyChanged
     {
-        private string folderName = "I18N";
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private const string OUTPUT_PREFIX = "I18N";
+        private const int HEADER_ROW_LINE = 2;
+        private const int KEY_COLUMN_INDEX = 0;
+
         private List<string> files = new List<string>();
 
-        public string sourceFilePath = null;
-        public string errMsg = "";
+        private string _sourceFilePath = "";
+        public string SourceFilePath
+        {
+            get => _sourceFilePath;
+            set
+            {
+                if (_sourceFilePath == value) return;
+                _sourceFilePath = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SourceFilePath)));
+            }
+        }
+
+        private string _errMsg = "";
+        public string ErrMsg
+        {
+            get => _errMsg;
+            set
+            {
+                if (_errMsg == value) return;
+                _errMsg = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ErrMsg)));
+            }
+        }
 
         public MainWindow()
         {
@@ -40,29 +55,25 @@ namespace WpfApp1
             openFileDialog.Filter = "Tab Seperate Files (*.tsv)|*.tsv";
 			if(openFileDialog.ShowDialog() == true)
             {
-                sourceFilePath = openFileDialog.FileName;
-				srcFilePath.Content = openFileDialog.FileName;
-
-                Convert2Xcode();
+                SourceFilePath = openFileDialog.FileName;
             }
             else
             {
-                errMsg = "Open file failed";
+                ErrMsg = "Open file failed";
             }
-
-            statusLabel.Content = errMsg;
         }
 
-        private bool Convert2Xcode()
+        private bool Convert2Txts()
         {
+            ErrMsg = "Converting...";
+            files.Clear();
+            string folderName = $"{OUTPUT_PREFIX}-txts";
             System.IO.Directory.CreateDirectory(folderName);
 
-            int keyColumn = 1;
-
-            string[] rows = File.ReadAllLines(sourceFilePath);
-            if (rows.Length <= 1)
+            string[] rows = File.ReadAllLines(SourceFilePath);
+            if (rows.Length <= HEADER_ROW_LINE)
             {
-                errMsg = "rows.Length <= 1";
+                ErrMsg = $"No Body\nrows.Length <= {HEADER_ROW_LINE}";
                 return false;
             }
 
@@ -71,19 +82,19 @@ namespace WpfApp1
                 string[] columns = rows[r].Split('\t');
                 if (columns.Length <= 2)
                 {
-                    errMsg = "columns.Length <= 2";
+                    ErrMsg = "columns.Length <= 2";
                     return false;
                 }
 
                 if (r == 0)
                 {
-                    if (columns[keyColumn].ToLower() != "key")
+                    if (columns[KEY_COLUMN_INDEX].ToLower() != "key")
                     {
-                        errMsg = $"columns[{keyColumn}].ToLower() != \"key\"";
+                        ErrMsg = $"row[{r}] column[{KEY_COLUMN_INDEX}] ToLower() != \"key\"";
                         return false;
                     }
 
-                    for (int c = keyColumn + 1; c < columns.Length; c++)
+                    for (int c = KEY_COLUMN_INDEX + 1; c < columns.Length; c++)
                     {
                         string filePath = $@"{folderName}/{columns[c]}.txt";
                         if(File.Exists(filePath))
@@ -96,31 +107,111 @@ namespace WpfApp1
                         files.Add(filePath);
                     }
                 }
-                else
+                else if (r >= HEADER_ROW_LINE)
                 {
-                    int fileIndex = 0;
-                    for (int c = keyColumn + 1; c < columns.Length; c++)
-                    {
-                        string s = "";
-                        if (columns[keyColumn].StartsWith("//"))
-                        {
-                            s = $"{columns[keyColumn]}";
-                        }
-                        else
-                        {
-                            string n = columns[c].Replace("\"", "\\\"");
-                            s = $"\"{columns[keyColumn]}\" = \"{n}\";";
-                        }
-                        Debug.WriteLine(s);
-                        File.AppendAllText(files[fileIndex], $"{s}\n");
-
-                        fileIndex++;
-                    }
+                    WriteBody(columns, KEY_COLUMN_INDEX + 1);
                 }
             }
 
-            errMsg = "Completed";
+            ErrMsg = "Completed";
             return true;
+        }
+
+        private bool Convert2XCode()
+        {
+            ErrMsg = "Converting...";
+            files.Clear();
+            string folderName = $"{OUTPUT_PREFIX}-XCode";
+            System.IO.Directory.CreateDirectory(folderName);
+
+            string[] rows = File.ReadAllLines(SourceFilePath);
+            if (rows.Length <= HEADER_ROW_LINE)
+            {
+                ErrMsg = $"No Body\nrows.Length <= {HEADER_ROW_LINE}";
+                return false;
+            }
+
+            for (int r = 0; r < rows.Length; r++)
+            {
+                string[] columns = rows[r].Split('\t');
+                if (columns.Length <= 2)
+                {
+                    ErrMsg = "columns.Length <= 2";
+                    return false;
+                }
+
+                if (r == 1)
+                {
+                    if (columns[KEY_COLUMN_INDEX].ToLower() != "abbr")
+                    {
+                        ErrMsg = $"row[{r}] column[{KEY_COLUMN_INDEX}] ToLower() != \"abbr\"";
+                        return false;
+                    }
+
+                    for (int c = KEY_COLUMN_INDEX + 1; c < columns.Length; c++)
+                    {
+                        if (columns[c] == string.Empty)
+                        {
+                            continue;
+                        }
+                        string dirPath = $@"{folderName}/{columns[c]}.lproj";
+                        if (Directory.Exists(dirPath))
+                        {
+                            Directory.Delete(dirPath, true);
+                        }
+                        Directory.CreateDirectory(dirPath);
+
+                        string filePath = $@"{dirPath}/Localizable.strings";
+                        if(File.Exists(filePath))
+                        {
+                            File.Delete(filePath);
+                        }
+                        FileStream fs = File.Create(filePath);
+                        fs.Close();
+
+                        files.Add(filePath);
+                    }
+                }
+                else if (r >= HEADER_ROW_LINE)
+                {
+                    WriteBody(columns, KEY_COLUMN_INDEX + 1);
+                }
+            }
+
+            ErrMsg = "Completed";
+            return true;
+        }
+
+        private void WriteBody(string[] columns, int startIndex)
+        {
+            int fileIndex = 0;
+            for (int c = startIndex; c < startIndex + files.Count; c++)
+            {
+                string s = "";
+                if (columns[KEY_COLUMN_INDEX].StartsWith("//"))
+                {
+                    s = $"{columns[KEY_COLUMN_INDEX]}";
+                }
+                else
+                {
+                    string n = columns[c].Replace("\"", "\\\"");
+                    s = $"\"{columns[KEY_COLUMN_INDEX]}\" = \"{n}\";";
+                }
+                Debug.WriteLine(s);
+                File.AppendAllText(files[fileIndex], $"{s}\n");
+
+                fileIndex++;
+            }
+        }
+
+        private void OnToTxtClicked(object sender, RoutedEventArgs e)
+        {
+            Convert2Txts();
+        }
+
+        private void On2XCodeClicked(object sender, RoutedEventArgs e)
+        {
+            Convert2XCode();
         }
     }
 }

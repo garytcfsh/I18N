@@ -6,7 +6,17 @@
         xmlns:local="clr-namespace:WpfApp1"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800"
-        Loaded="OnLoaded">
+        Loaded="OnLoaded"
+        x:Name="root">
+
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Padding" Value="5, 0"/>
+        </Style>
+        
+    </Window.Resources>
+    
     <Grid>
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="1*"/>
@@ -14,14 +24,24 @@
       </Grid.ColumnDefinitions>
       <Grid.RowDefinitions>
         <RowDefinition />
+        <RowDefinition MaxHeight="40"/>
         <RowDefinition />
         <RowDefinition />
       </Grid.RowDefinitions>
         <Label Grid.Row="0" Grid.Column="0" Content="Flow:"/>
         <Label Grid.Row="0" Grid.Column="1" Content="Modify I18N.xlsx -> copy to google sheet -> save as tsv"/>
-        <Label Grid.Row="1" Grid.Column="0" Content="Source File: "/>
-        <Label Grid.Row="1" Grid.Column="1" x:Name="srcFilePath"/>
-        <Label Grid.Row="2" Grid.Column="0" Content="Status: "/>
-        <Label Grid.Row="2" Grid.Column="1" x:Name="statusLabel" />
+        <Label Grid.Row="1" Grid.Column="0" Content="Action:"/>
+        <StackPanel Grid.Row="1" Grid.Column="1" 
+                    Orientation="Horizontal"
+                    >
+            <Button Content="To txt(s)"
+                    Click="OnToTxtClicked"/>
+            <Button Content="To XCode Formate"
+                    Click="On2XCodeClicked"/>
+        </StackPanel>
+        <Label Grid.Row="2" Grid.Column="0" Content="Source File: "/>
+        <Label Grid.Row="2" Grid.Column="1" Content="{Binding ElementName=root, Path=SourceFilePath}"/>
+        <Label Grid.Row="3" Grid.Column="0" Content="Status: "/>
+        <Label Grid.Row="3" Grid.Column="1" Content="{Binding ElementName=root, Path=ErrMsg}" />
     </Grid>
 </Window>

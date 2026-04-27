@@ -72,7 +72,7 @@
 
         <GroupBox Grid.Row="3" Header="Step 3. Convert file" Margin="0,0,0,10">
             <StackPanel Margin="8">
-                <StackPanel Orientation="Horizontal">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                 <Button Content="Convert to Xcode"
                         MinWidth="140"
                         Click="On2XCodeClicked"/>
@@ -80,6 +80,9 @@
                         MinWidth="120"
                         Click="OnToTxtClicked"/>
                 </StackPanel>
+                <CheckBox Margin="5,0,0,0"
+                          Content="Skip empty values (don't write key if translation is blank)"
+                          IsChecked="{Binding ElementName=root, Path=SkipEmptyValues}"/>
             <StackPanel Orientation="Horizontal" Margin="5,4,0,0"
                     Visibility="{Binding ElementName=root, Path=IsConverting, Converter={StaticResource BoolToVis}}">
                 <ProgressBar Width="130" Height="14" IsIndeterminate="True"/>

@@ -90,6 +90,18 @@ namespace WpfApp1
             }
         }
 
+        private bool _skipEmptyValues = true;
+        public bool SkipEmptyValues
+        {
+            get => _skipEmptyValues;
+            set
+            {
+                if (_skipEmptyValues == value) return;
+                _skipEmptyValues = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SkipEmptyValues)));
+            }
+        }
+
         private bool _isConverting;
         public bool IsConverting
         {
@@ -127,6 +139,7 @@ namespace WpfApp1
 
         private ConversionResult Convert2Txts()
         {
+            bool skipEmpty = SkipEmptyValues;
             string folderName = $"{OUTPUT_PREFIX}-txts";
             System.IO.Directory.CreateDirectory(folderName);
             string outputPath = Path.GetFullPath(folderName);
@@ -209,7 +222,7 @@ namespace WpfApp1
                     continue;
                 }
 
-                WriteBody(columns, keyColumnIndex, outputTargets);
+                WriteBody(columns, keyColumnIndex, outputTargets, skipEmpty);
             }
 
             return new ConversionResult
@@ -222,6 +235,7 @@ namespace WpfApp1
 
         private ConversionResult Convert2XCode()
         {
+            bool skipEmpty = SkipEmptyValues;
             string folderName = $"{OUTPUT_PREFIX}-XCode";
             System.IO.Directory.CreateDirectory(folderName);
             string outputPath = Path.GetFullPath(folderName);
@@ -305,7 +319,7 @@ namespace WpfApp1
                     continue;
                 }
 
-                WriteBody(columns, keyColumnIndex, outputTargets);
+                WriteBody(columns, keyColumnIndex, outputTargets, skipEmpty);
             }
 
             return new ConversionResult
@@ -316,19 +330,25 @@ namespace WpfApp1
             };
         }
 
-        private void WriteBody(string[] columns, int keyColumnIndex, IReadOnlyList<OutputTarget> outputTargets)
+        private void WriteBody(string[] columns, int keyColumnIndex, IReadOnlyList<OutputTarget> outputTargets, bool skipEmpty)
         {
             foreach (OutputTarget target in outputTargets)
             {
-                string s = "";
                 string value = target.ColumnIndex < columns.Length ? columns[target.ColumnIndex] ?? "" : "";
                 string key = keyColumnIndex < columns.Length ? columns[keyColumnIndex] ?? "" : "";
+
+                string s;
                 if (key.StartsWith("//"))
                 {
-                    s = $"{key}";
+                    s = key;
                 }
                 else
                 {
+                    if (skipEmpty && string.IsNullOrWhiteSpace(value))
+                    {
+                        continue;
+                    }
+
                     string n = value.Replace("\"", "\\\"");
                     s = $"\"{key}\" = \"{n}\";";
                 }
